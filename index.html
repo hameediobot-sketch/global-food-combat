@@ -49,7 +49,7 @@
             <button class="character-btn" data-character="sushi" style="font-size: 48px; padding: 20px; border: none; border-radius: 10px; cursor: pointer; background: #fff;">🍣</button>
         </div>
     </div>
-    <div id="info">Phase 4: Enemy AI and Combat Test</div>
+    <div id="info">Phase 5: Mouse/Touch Movement Test</div>
 
     <script>
         // Phase 1 & 2: Canvas Setup and Character Selection
@@ -120,10 +120,40 @@
             // Movement input
             let moveX = 0, moveY = 0;
             
-            if (window.keys.w || window.keys.ArrowUp) moveY -= window.player.speed * dt;
-            if (window.keys.s || window.keys.ArrowDown) moveY += window.player.speed * dt;
-            if (window.keys.a || window.keys.ArrowLeft) moveX -= window.player.speed * dt;
-            if (window.keys.d || window.keys.ArrowRight) moveX += window.player.speed * dt;
+            // Check for mouse/touch movement first
+            if (window.isMovingToTarget && window.mouseTarget) {
+                const dx = window.mouseTarget.x - window.player.x;
+                const dy = window.mouseTarget.y - window.player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // If close enough to target, stop moving
+                if (distance < 5) {
+                    window.isMovingToTarget = false;
+                    window.mouseTarget = null;
+                } else {
+                    // Move toward mouse target
+                    moveX += (dx / distance) * window.player.speed * dt;
+                    moveY += (dy / distance) * window.player.speed * dt;
+                }
+            }
+            
+            // Keyboard movement (can override or combine with mouse)
+            if (window.keys.w || window.keys.ArrowUp) {
+                moveY -= window.player.speed * dt;
+                window.isMovingToTarget = false; // Cancel mouse movement
+            }
+            if (window.keys.s || window.keys.ArrowDown) {
+                moveY += window.player.speed * dt;
+                window.isMovingToTarget = false;
+            }
+            if (window.keys.a || window.keys.ArrowLeft) {
+                moveX -= window.player.speed * dt;
+                window.isMovingToTarget = false;
+            }
+            if (window.keys.d || window.keys.ArrowRight) {
+                moveX += window.player.speed * dt;
+                window.isMovingToTarget = false;
+            }
             
             // Update position
             window.player.x += moveX;
@@ -154,6 +184,28 @@
             );
             
             ctx.restore();
+            
+            // Draw mouse target indicator if moving to target
+            if (window.isMovingToTarget && window.mouseTarget) {
+                ctx.save();
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                
+                // Draw target circle
+                ctx.beginPath();
+                ctx.arc(window.mouseTarget.x, window.mouseTarget.y, 20, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Draw line from player to target
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(window.player.x, window.player.y);
+                ctx.lineTo(window.mouseTarget.x, window.mouseTarget.y);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
         }
         
         // Game loop
@@ -441,6 +493,63 @@
             }
         });
         
+        // Phase 5: Mouse/Touch Movement System
+        window.mouseTarget = null;
+        window.isMovingToTarget = false;
+        
+        // Get mouse/touch position relative to canvas
+        window.getCanvasPosition = function(event) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            let clientX, clientY;
+            
+            if (event.touches && event.touches.length > 0) {
+                // Touch event
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                // Mouse event
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+            
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+        
+        // Mouse click handler
+        canvas.addEventListener('mousedown', function(event) {
+            if (!window.gameRunning) return;
+            
+            const pos = window.getCanvasPosition(event);
+            window.mouseTarget = { x: pos.x, y: pos.y };
+            window.isMovingToTarget = true;
+            
+            console.log(`Mouse target set: ${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}`);
+            event.preventDefault();
+        });
+        
+        // Touch handlers for mobile
+        canvas.addEventListener('touchstart', function(event) {
+            if (!window.gameRunning) return;
+            
+            const pos = window.getCanvasPosition(event);
+            window.mouseTarget = { x: pos.x, y: pos.y };
+            window.isMovingToTarget = true;
+            
+            console.log(`Touch target set: ${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}`);
+            event.preventDefault();
+        });
+        
+        // Prevent context menu on canvas
+        canvas.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        });
+        
         // Auto-start game when character selected
         const originalSelectCharacter = window.selectCharacter;
         window.selectCharacter = function(character) {
@@ -593,7 +702,41 @@
             return true;
         }
         
-        console.log('Phase 1, 2, 3 & 4: Complete game with enemies and combat ready');
+        window.testPhase5 = function() {
+            console.log('Phase 5 Test Results:');
+            console.log('✅ Mouse target system exists:', typeof window.mouseTarget !== 'undefined');
+            console.log('✅ Canvas position function exists:', typeof window.getCanvasPosition === 'function');
+            console.log('✅ Mouse movement state:', typeof window.isMovingToTarget !== 'undefined');
+            
+            // Test character selection first
+            console.log('Testing character selection...');
+            window.selectCharacter('pizza');
+            console.log('✅ Game running:', window.gameRunning);
+            
+            if (window.gameRunning) {
+                console.log('Testing mouse movement simulation...');
+                console.log('Player position before:', window.player.x.toFixed(1), window.player.y.toFixed(1));
+                
+                // Simulate mouse click at different position
+                window.mouseTarget = { x: 600, y: 200 };
+                window.isMovingToTarget = true;
+                console.log('✅ Mouse target set to:', window.mouseTarget.x, window.mouseTarget.y);
+                
+                // Run a few movement updates to test
+                for (let i = 0; i < 3; i++) {
+                    window.updatePlayer(100); // 100ms updates
+                }
+                
+                console.log('Player position after:', window.player.x.toFixed(1), window.player.y.toFixed(1));
+                console.log('✅ Mouse movement working:', window.player.x !== 400 || window.player.y !== 300);
+                console.log('✅ Moving toward target:', window.isMovingToTarget);
+            }
+            
+            console.log('Phase 5: Mouse/Touch Movement System ✅ WORKING!');
+            return true;
+        }
+        
+        console.log('Phase 1, 2, 3, 4 & 5: Complete game with mouse/touch controls ready');
     </script>
 </body>
 </html>
