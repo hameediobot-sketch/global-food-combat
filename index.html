@@ -326,6 +326,7 @@
         let keys = {};
         let camera = { x: 0, y: 0, shake: 0 };
         let messageOverlay, characterSelectModal;
+        let gameState = null;
 
         function init() {
             canvas = document.getElementById('gameCanvas');
@@ -425,7 +426,15 @@
             
             document.getElementById('character-select-container').style.display = 'none';
             startGame();
-         }
+            
+            // Initialize gameState after character selection
+            gameState = {
+                character: characterSelected,
+                gameStarted: true,
+                playerHealth: playerHealth,
+                score: score
+            };
+        }
 
         function startGame() {
             const char = CharacterTypes[characterSelected];
