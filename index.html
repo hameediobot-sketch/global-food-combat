@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Food Combat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        #gameCanvas {
+            border: 4px solid #ffd700;
+            border-radius: 10px;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+            background: #e8f5e9;
+        }
+        
+        #ui-panel {
+            width: 100%;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            color: white;
+            z-index: 10;
+        }
+        
+        #score-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        #health-badges {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .health-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .health-icon {
+            font-size: 30px;
+        }
+        
+        .health-bar {
+            width: 150px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .health-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        #health-fill.player {
+            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+        }
+        
+        #health-fill.enemy {
+            background: linear-gradient(90deg, #4ecdc4, #45b7d1);
+        }
+        
+        #controls-help {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 10px;
+            text-align: center;
+            max-width: 800px;
+        }
+        
+        #controls-help h4 {
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+        
+        kbd {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 14px;
+            margin: 0 2px;
+        }
+        
+        #character-select-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        
+        .character-select-modal {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+            max-width: 600px;
+        }
+        
+        .character-select-modal h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+        
+        .char-options {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .char-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: #f0f0f0;
+            border: 3px solid transparent;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 120px;
+        }
+        
+        .char-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .char-option.selected {
+            border-color: #ffd700;
+            background: #fff9c4;
+        }
+        
+        .char-option span {
+            font-size: 50px;
+        }
+        
+        .char-option strong {
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .char-option small {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        #message-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            font-size: 32px;
+            display: none;
+            z-index: 1000;
+            min-width: 400px;
+            pointer-events: none;
+        }
+        
+        #message-overlay.win {
+            border: 3px solid #4caf50;
+            box-shadow: 0 0 40px rgba(76, 175, 80, 0.5);
+        }
+        
+        #message-overlay.lose {
+            border: 3px solid #f44336;
+            box-shadow: 0 0 40px rgba(244, 67, 54, 0.5);
+        }
+        
+        #restart-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            background: linear-gradient(135deg, #ffd700, #ffb300);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #333;
+            font-weight: bold;
+            transition: transform 0.2s;
+            pointer-events: auto;
+        }
+        
+        #restart-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        #special-indicator {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4caf50;
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui-panel">
+            <div id="health-badges">
+                <div class="health-badge">
+                    <span class="health-icon">🍕</span>
+                    <div class="health-bar">
+                        <div id="health-fill.player" class="health-fill" style="width: 100%;"></div>
+                    </div>
+                </div>
+                <div class="health-badge">
+                    <span class="health-icon">🍩</span>
+                    <div class="health-bar">
+                        <div id="health-fill.enemy" class="health-fill" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+            <span id="score-display">Score: <span id="score-value">0</span></span>
+        </div>
+        
+        <div id="character-select-container">
+            <div class="character-select-modal" id="character-select-modal"></div>
+        </div>
+        
+        <div id="message-overlay">
+            <div id="message-text"></div>
+            <button id="restart-btn" onclick="restartGame()">Play Again</button>
+        </div>
+        
+        <div id="special-indicator">⚡ Special Ability Ready! Press E ⚡</div>
+        
+        <div id="controls-help">
+            <h4>🎮 Controls 🎮</h4>
+            <p>Use <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>↻</kbd><kbd>↓</kbd><kbd>←</kbd> to move</p>
+            <p><kbd>Space</kbd> or <kbd>Click</kbd> to attack • <kbd>E</kbd> for special ability</p>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            CANVAS_WIDTH: 800,
+            CANVAS_HEIGHT: 600,
+            ATTACK_RANGE: 70,
+            SPECIAL_COOLDOWN: 5000,
+            SPECIAL_DAMAGE: 35
+        };
+
+        const CharacterTypes = {
+            pizza: { emoji: '🍕', speed: 5, health: 100, damage: 15, special: 'Sauce Blast', color: '#ff6b35' },
+            burger: { emoji: '🍔', speed: 4, health: 120, damage: 18, special: 'Meaty Smash', color: '#8d6e63' },
+            taco: { emoji: '🌮', speed: 6, health: 80, damage: 12, special: 'Salsa Strike', color: '#c23616' },
+            sushi: { emoji: '🍣', speed: 7, health: 70, damage: 20, special: 'Wasabi Wave', color: '#66bb6a' }
+        };
+
+        let canvas, ctx;
+        let player, enemy, projectiles = [], particles = [];
+        let lastTime = 0, playerLastSpecialTime = 0, enemyLastSpecialTime = 0;
+        let gameOver = false, gameStarted = false;
+        let playerHealth = 100, enemyHealth = 100;
+        let score = 0;
+        let playerSpecialReady = true, enemySpecialReady = false;
+        let playerHealthBarEl, enemyHealthBarEl, scoreEl;
+        let characterSelected = 'pizza';
+        let keys = {};
+        let camera = { x: 0, y: 0, shake: 0 };
+        let messageOverlay, characterSelectModal;
+
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            canvas.width = CONFIG.CANVAS_WIDTH;
+            canvas.height = CONFIG.CANVAS_HEIGHT;
+            ctx = canvas.getContext('2d');
+            
+            playerHealthBarEl = document.getElementById('health-fill.player');
+            enemyHealthBarEl = document.getElementById('health-fill.enemy');
+            scoreEl = document.getElementById('score-value');
+            messageOverlay = document.getElementById('message-overlay');
+            characterSelectModal = document.getElementById('character-select-modal');
+            
+            canvas.addEventListener('click', canvasClick);
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('keyup', handleKeyUp);
+            
+            showCharacterSelect();
+         }
+
+        function canvasClick() {
+            if (gameStarted && !gameOver) {
+                attack(player);
+             }
+         }
+
+        function handleKeyDown(e) {
+            if (e.key === ' ') {
+                e.preventDefault();
+                keys.space = true;
+                if (gameStarted && !gameOver && !player.attacking) {
+                    attack(player);
+                 }
+             }
+            
+             if (e.key.toLowerCase() === 'e') {
+                 e.preventDefault();
+                 if (gameStarted && !gameOver && playerSpecialReady) {
+                     useSpecial();
+                 }
+             }
+            
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = true;
+            else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = true;
+            else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+            else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+         }
+
+        function handleKeyUp(e) {
+            if (e.key === ' ') keys.space = false;
+            else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+            else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = false;
+            else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+            else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+         }
+
+        function showCharacterSelect() {
+            messageOverlay.style.display = 'none';
+            characterSelectModal.innerHTML = `
+                <h2>🍽️ Select Your Food Character! 🍽️</h2>
+                <div class="char-options">
+                    <div class="char-option selected" onclick="selectCharacter('pizza')">
+                        <span>🍕</span>
+                        <strong>Pizza</strong>
+                        <small>Fast & Strong</small>
+                    </div>
+                    <div class="char-option" onclick="selectCharacter('burger')">
+                        <span>🍔</span>
+                        <strong>Burger</strong>
+                        <small>Balanced</small>
+                    </div>
+                    <div class="char-option" onclick="selectCharacter('taco')">
+                        <span>🌮</span>
+                        <strong>Taco</strong>
+                        <small>Agile & Quick</small>
+                    </div>
+                    <div class="char-option" onclick="selectCharacter('sushi')">
+                        <span>🍣</span>
+                        <strong>Sushi</strong>
+                        <small>Precise</small>
+                    </div>
+                </div>
+            `;
+            document.getElementById('character-select-container').style.display = 'flex';
+         }
+
+        function selectCharacter(charType) {
+            characterSelected = charType;
+            
+            const options = characterSelectModal.querySelectorAll('.char-option');
+            options.forEach((opt, i) => {
+                opt.classList.remove('selected');
+                if (charType === ['pizza', 'burger', 'taco', 'sushi'][i]) {
+                    opt.classList.add('selected');
+                }
+            });
+            
+            document.getElementById('character-select-container').style.display = 'none';
+            startGame();
+         }
+
+        function startGame() {
+            const char = CharacterTypes[characterSelected];
+            
+            player = {
+                x: 100, y: 300,
+                speed: char.speed,
+                health: char.health,
+                maxHealth: char.health,
+                damage: char.damage,
+                special: char.special,
+                color: char.color,
+                emoji: char.emoji,
+                isPlayer: true,
+                facing: 1,
+                attacking: false
+             };
+            
+            enemy = {
+                x: 700, y: 300,
+                speed: 3 + Math.random() * 2,
+                health: 100,
+                maxHealth: 100,
+                damage: 20,
+                emoji: '🍩',
+                isPlayer: false,
+                facing: -1,
+                attacking: false,
+                lastAttackTime: 0
+             };
+            
+            playerHealth = player.maxHealth;
+            enemyHealth = enemy.maxHealth;
+            score = 0;
+            projectiles = [];
+            particles = [];
+            camera.shake = 0;
+            gameOver = false;
+            gameStarted = true;
+            playerSpecialReady = true;
+            enemySpecialReady = false;
+            playerLastSpecialTime = 0;
+            enemyLastSpecialTime = 0;
+            
+            updateHealthUI();
+            updateScoreUI();
+            
+            requestAnimationFrame(gameLoop);
+         }
+
+        function updateHealthUI() {
+            let playerPct = Math.max(0, Math.min(100, playerHealth / player.maxHealth * 100));
+            let enemyPct = Math.max(0, Math.min(100, enemyHealth / enemy.maxHealth * 100));
+            
+            playerHealthBarEl.style.width = playerPct + '%';
+            enemyHealthBarEl.style.width = enemyPct + '%';
+         }
+
+        function updateScoreUI() {
+            scoreEl.textContent = score;
+         }
+
+        function showGameOver(win) {
+            gameOver = true;
+            document.getElementById('character-select-container').style.display = 'none';
+            
+            let overlay = document.getElementById('message-overlay');
+            overlay.style.display = 'block';
+            
+            if (win) {
+                overlay.className = 'win';
+                overlay.innerHTML = `<div style="color: #4caf50;">🎉 VICTORY! 🎉<br><br>You defeated your opponent!<br><br><strong>Final Score: ${score}</strong></div>`;
+             } else {
+                overlay.className = 'lose';
+                overlay.innerHTML = `<div style="color: #f44336;">💀 DEFEAT! 💀<br><br>Game Over<br><br>Your character was defeated</div>`;
+             }
+         }
+
+        function restartGame() {
+            messageOverlay.style.display = 'none';
+            showCharacterSelect();
+         }
+
+        function gameLoop(timestamp) {
+            if (!gameStarted || gameOver) {
+                if (gameStarted) {
+                    draw();
+                 }
+                return;
+             }
+            
+            let deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            if (deltaTime > 50) deltaTime = 50;
+            
+            update(deltaTime);
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+         }
+
+        function update(deltaTime) {
+             // Player movement
+            if (!player.attacking) {
+                if (keys.up || keys.w || keys.W) player.y -= player.speed;
+                if (keys.down || keys.s || keys.S) player.y += player.speed;
+                if (keys.left || keys.a || keys.A) player.x -= player.speed;
+                if (keys.right || keys.d || keys.D) player.x += player.speed;
+             }
+            
+             // Player boundaries
+            player.x = Math.max(50, Math.min(750, player.x));
+            player.y = Math.max(50, Math.min(550, player.y));
+            
+             // Enemy AI
+            let dx = player.x - enemy.x;
+            let dy = player.y - enemy.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (!enemy.attacking) {
+                if (distance > 150) {
+                    enemy.x += (dx / distance) * enemy.speed;
+                    enemy.y += (dy / distance) * enemy.speed;
+                    enemy.facing = dx > 0 ? 1 : -1;
+                } else {
+                    if (Date.now() - enemy.lastAttackTime > 1200 && Math.random() < 0.02) {
+                        enemy.attacking = true;
+                        enemy.lastAttackTime = Date.now();
+                        setTimeout(() => {
+                            if (enemy) enemy.attacking = false;
+                        }, 300);
+                    }
+                }
+            }
+            
+            // Enemy boundaries
+            enemy.x = Math.max(50, Math.min(750, enemy.x));
+            enemy.y = Math.max(50, Math.min(550, enemy.y));
+            
+            // Update projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                
+                if (p.life <= 0 || p.x < 0 || p.x > 800 || p.y < 0 || p.y > 600) {
+                    projectiles.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision
+                if (p.targetId === 'player') {
+                    if (distance(p.x, p.y, enemy.x, enemy.y) < 35) {
+                        enemyHealth -= p.damage;
+                        camera.shake = 10;
+                        createParticles(p.x, p.y, p.color, 8);
+                        projectiles.splice(i, 1);
+                        updateHealthUI();
+                        updateScoreUI();
+                        continue;
+                    }
+                } else {
+                    if (distance(p.x, p.y, player.x, player.y) < 35) {
+                        playerHealth -= p.damage;
+                        camera.shake = 10;
+                        createParticles(p.x, p.y, p.color, 8);
+                        projectiles.splice(i, 1);
+                        updateHealthUI();
+                        updateScoreUI();
+                        continue;
+                    }
+                }
+            }
+            
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+                p.vx *= 0.95;
+                p.vy *= 0.95;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            // Special attack cooldown
+            if (!playerSpecialReady && Date.now() > playerLastSpecialTime + CONFIG.SPECIAL_COOLDOWN) {
+                playerSpecialReady = true;
+                document.getElementById('special-indicator').style.display = 'block';
+            }
+            
+            if (!enemySpecialReady && Date.now() > enemyLastSpecialTime + CONFIG.SPECIAL_COOLDOWN * 1.5) {
+                enemySpecialReady = true;
+            }
+            
+            // Enemy special attack
+            if (enemySpecialReady && distance < 200 && Math.random() < 0.015) {
+                enemySpecialReady = false;
+                enemyLastSpecialTime = Date.now();
+                
+                let angle = Math.atan2(dy, dx);
+                for (let i = 0; i < 8; i++) {
+                    let spreadAngle = angle + (Math.random() - 0.5) * 0.5;
+                    projectiles.push({
+                        x: enemy.x,
+                        y: enemy.y,
+                        vx: Math.cos(spreadAngle) * 10,
+                        vy: Math.sin(spreadAngle) * 10,
+                        damage: 25,
+                        color: '#ff6b6b',
+                        life: 50,
+                        targetId: 'player',
+                        sourceId: 'enemy'
+                    });
+                }
+            }
+            
+            // Check win/loss
+            if (enemyHealth <= 0) {
+                showGameOver(true);
+                return;
+            }
+            if (playerHealth <= 0) {
+                showGameOver(false);
+                return;
+            }
+        }
+
+        function attack(attacker) {
+            if (attacker.attacking) return;
+            
+            let direction = attacker.isPlayer ? 1 : -1;
+            let dx = direction * 60;
+            let dy = 0;
+            
+            let projectile = {
+                x: attacker.x + dx * attacker.facing,
+                y: attacker.y,
+                vx: dx * 0.15,
+                vy: dy * 0.15,
+                damage: attacker.damage,
+                color: attacker.color,
+                life: 60,
+                targetId: attacker.isPlayer ? 'enemy' : 'player',
+                sourceId: attacker.isPlayer ? 'player' : 'enemy'
+            };
+            
+            projectiles.push(projectile);
+            attacker.attacking = true;
+            setTimeout(() => {
+                attacker.attacking = false;
+            }, 200);
+        }
+
+        function useSpecial() {
+            if (!playerSpecialReady) return;
+            
+            playerSpecialReady = false;
+            playerLastSpecialTime = Date.now();
+            document.getElementById('special-indicator').style.display = 'none';
+            
+            // Create special attack effect - radial burst
+            for (let i = 0; i < 12; i++) {
+                let angle = (Math.PI * 2 / 12) * i + (Math.random() - 0.5) * 0.3;
+                let speed = 8 + Math.random() * 4;
+                
+                projectiles.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    damage: CONFIG.SPECIAL_DAMAGE,
+                    color: player.color,
+                    life: 45,
+                    targetId: 'enemy',
+                    sourceId: 'player'
+                });
+            }
+            
+            camera.shake = 15;
+        }
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.5) * 15,
+                    life: 1.0,
+                    color: color
+                });
+            }
+        }
+
+        function distance(x1, y1, x2, y2) {
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#e8f5e9';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw kitchen floor pattern
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 800; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 600);
+                ctx.stroke();
+            }
+            for (let i = 0; i < 600; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(800, i);
+                ctx.stroke();
+            }
+            
+            // Apply shake effect
+            let shakeX = 0, shakeY = 0;
+            if (camera.shake > 0) {
+                shakeX = (Math.random() - 0.5) * camera.shake;
+                shakeY = (Math.random() - 0.5) * camera.shake;
+                ctx.save();
+                ctx.translate(shakeX, shakeY);
+            }
+            
+            drawEntity(player);
+            drawEntity(enemy);
+            
+            // Draw projectiles
+            projectiles.forEach(drawProjectile);
+            
+            // Draw particles
+            particles.forEach(drawParticle);
+            
+            if (camera.shake > 0) {
+                ctx.restore();
+                camera.shake *= 0.9;
+                if (camera.shake < 0.5) camera.shake = 0;
+            }
+        }
+
+        function drawEntity(entity) {
+            ctx.save();
+            ctx.translate(entity.x, entity.y);
+            ctx.scale(entity.facing, 1);
+            
+            // Draw health bar above character
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillRect(-30, -70, 60, 10);
+            let barWidth = Math.max(0, 60 * (entity.health / entity.maxHealth));
+            ctx.fillStyle = entity.isPlayer ? '#4caf50' : '#f44336';
+            ctx.fillRect(-30, -70, barWidth, 10);
+            
+            // Draw emoji
+            ctx.font = '60px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(entity.emoji, 0, 0);
+            
+            // Draw attack animation
+            if (entity.attacking) {
+                ctx.fillStyle = entity.color + 'cc';
+                ctx.beginPath();
+                ctx.arc(55, 0, 35, -Math.PI / 2, Math.PI / 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        function drawProjectile(p) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, 18, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('💥', 0, 0);
+            
+            // Explosion effect for special attacks
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, 25 + (30 - p.life * 0.5), 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        function drawParticle(p) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.translate(p.x, p.y);
+            
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, 10 * p.life, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        // Initialize game
+        init();
+    </script>
+</body>
+</html>
